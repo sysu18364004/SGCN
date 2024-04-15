@@ -21,7 +21,20 @@ class LSTM(nn.Module):
         alpha_n = F.softmax(scores, dim=-1) 
         context = torch.matmul(alpha_n, x).sum(1)
         return context, alpha_n
-
+        
+    def infence(self,x):
+            x = x.permute(1, 0) 
+            x = self.embeding(x)
+            
+            output,(h_n,c_n)=self.lstm(x)
+            output = output.permute(1, 0, 2) 
+            query = self.dropout(output)
+            # 加入attention机制
+            attn_output, alpha_n = self.attention_net(output, query)
+            y_ = attn_output
+            y_ = self.end(y_)
+            return y_
+        
     def forward(self,x):
         y_ = self.infence(x)
         y_ = torch.sigmoid(y_)
