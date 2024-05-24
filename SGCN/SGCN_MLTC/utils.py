@@ -2,6 +2,43 @@ import scipy.sparse as sp
 import numpy as np
 import torch
 from sklearn.metrics import accuracy_score
+from sklearn import metrics
+def patk(actual, pred, k):
+    #we return 0 if k is 0 because 
+    #   we can't divide the no of common values by 0 
+    if k == 0:
+        return 0
+
+    #taking only the top k predictions in a class 
+    k_pred = pred[:k]
+
+    # taking the set of the actual values 
+    actual_set = set(actual)
+    # print(list(actual_set))
+    # taking the set of the predicted values 
+    pred_set = set(k_pred)
+    # print(list(pred_set))
+    
+    # 求预测值与真实值得交集
+    common_values = actual_set.intersection(pred_set)
+    # print(common_values)
+    if len(pred[:k]) == 0:
+        return 0
+    else:
+        return len(common_values)/len(pred[:k])
+    
+def mapk(acutal, pred, k):
+
+    #creating a list for storing the Average Precision Values
+    average_precision = []
+    #interating through the whole data and calculating the apk for each 
+    for i in range(len(acutal)):
+        ap = patk(np.where(acutal[i] > 0.5)[0], np.argsort(pred[i])[::-1], k)
+        # print(f"AP@k: {ap}")
+        average_precision.append(ap)
+
+    #returning the mean of all the data
+    return np.mean(average_precision)
 
 def normalize_adj(adj):
     """Symmetrically normalize adjacency matrix."""
@@ -79,3 +116,29 @@ def getall(predictions,labels):
         return (tp/pred_1).item(),(tp/truth_1).item(), 0
     else:
         return (tp/pred_1).item(),(tp/truth_1).item(),(2*tp/(pred_1 + truth_1)).item()
+        
+def get_all_metrics(predictions,labels):
+    if isinstance(predictions,list):
+        predictions = torch.cat(predictions,0)
+    # pred = torch.argmax(predictions,-1).cpu().tolist()
+    predicted_labels = predictions.cpu().numpy()
+    target_labels = labels.cpu().numpy()
+    n_classes = labels.shape[1]
+    # print(n_classes)
+    # predicted_labels, target_labels = np.array(predicted_labels), np.array(target_labels)
+    accuracy = metrics.accuracy_score(target_labels, predicted_labels.round())
+    micro_f1 = metrics.f1_score(target_labels, predicted_labels.round(), average='micro')
+    macro_f1 = metrics.f1_score(target_labels, predicted_labels.round(), average='macro')
+
+    ndcg1 = metrics.ndcg_score(target_labels, predicted_labels, k=1)
+    ndcg3 = metrics.ndcg_score(target_labels, predicted_labels, k=3)
+    ndcg5 = metrics.ndcg_score(target_labels, predicted_labels, k=5)
+
+    # p1 = Precision(num_classes=n_classes, top_k=1, task = "multilabel")(torch.tensor(predicted_labels), torch.tensor(target_labels) , num_labels=1)
+    # p3 = Precision(num_classes=n_classes, top_k=3, task = "multilabel")(torch.tensor(predicted_labels), torch.tensor(target_labels), num_labels=3)
+    # p5 = Precision(num_classes=n_classes, top_k=5, task = "multilabel")(torch.tensor(predicted_labels), torch.tensor(target_labels), num_labels=5)
+    # p1 , p3, p5 = 0, 0, 0
+    p1 = mapk(target_labels, predicted_labels, 1)
+    p3 = mapk(target_labels, predicted_labels, 3)
+    p5 = mapk(target_labels, predicted_labels, 5)
+    return [accuracy, micro_f1, macro_f1, ndcg1, ndcg3, ndcg5, p1, p3, p5]
