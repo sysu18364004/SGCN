@@ -18,10 +18,18 @@ def samples(sentences,labels,rate):
     sample_size = int(leng*rate)
     return sentences[:sample_size],labels[:sample_size]
 def get_dataset(args):
-    train_sentences,train_labels = load_tsv('/home/zengdl/project/InductTGCN/AAPD/data/aapd_train.tsv')
-    val_sentences,val_labels = load_tsv('/home/zengdl/project/InductTGCN/AAPD/data/aapd_validation.tsv')
-    test_sentences,test_labels = load_tsv('/home/zengdl/project/InductTGCN/AAPD/data/aapd_test.tsv')
-
+    if args.dataset_type == "reu":
+        train_sentences,train_labels = load_tsv('./data/reuster/train.tsv')
+        val_sentences,val_labels = load_tsv('./data/reuster/validation.tsv')
+        test_sentences,test_labels = load_tsv('./data/reuster/test.tsv')
+    if args.dataset_type == "rmsc":
+        train_sentences,train_labels = load_tsv('./data/rmsc/rmsc.train.tsv')
+        val_sentences,val_labels = load_tsv('./data/rmsc/rmsc.val.tsv')
+        test_sentences,test_labels = load_tsv('./data/rmsc/rmsc.test.tsv')
+    elif args.dataset_type == "aapd":
+        train_sentences,train_labels = load_tsv('./data/aapd/aapd_train.tsv')
+        val_sentences,val_labels = load_tsv('./data/aapd/aapd_validation.tsv')
+        test_sentences,test_labels = load_tsv('./data/aapd/aapd_test.tsv')
     train_sentences,train_labels = samples(train_sentences,train_labels,args.train_size)
     val_sentences,val_labels = samples(val_sentences,val_labels,args.train_size)
     test_sentences,test_labels = samples(test_sentences,test_labels,args.test_size)

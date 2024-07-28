@@ -2,8 +2,11 @@ from tqdm.auto import tqdm
 import scipy.sparse as sp
 from math import log
 import numpy as np
-
-from lstm_encoder import *
+import torch
+import json
+import pickle as pkl
+import time 
+# from bert_encoder import *
 def ordered_word_pair(a, b):
     if a > b:
         return b, a
@@ -15,17 +18,19 @@ def get_label_nums(label_item,base):
         if f == 1:
             ans.append(base+i)
     return ans
-def get_adj(tokenize_sentences,labels, train_size,test_size,word_id_map,word_list,args):
+
+def get_adj(ori_sentences,tokenize_sentences,labels, train_size,test_size,word_id_map,word_list,args):
     window_size = 20
     total_W = 0
     word_occurrence = {}
     word_pair_occurrence = {}
-
+    start_time = time.time()
     
     vocab_length = len(word_list)
 
     label_length = len(labels[0])
     node_size = train_size + len(word_list) + label_length + test_size
+    w_get = {'pmi':[],'idf':[]}
     def update_word_and_word_pair_occurrence(q):
         unique_q = list(set(q))
         for i in unique_q:
@@ -74,6 +79,7 @@ def get_adj(tokenize_sentences,labels, train_size,test_size,word_id_map,word_lis
     row = []
     col = []
     weight = []
+    
     for word_pair in word_pair_occurrence:
         i = word_pair[0]
         j = word_pair[1]
@@ -92,7 +98,15 @@ def get_adj(tokenize_sentences,labels, train_size,test_size,word_id_map,word_lis
     if not args.easy_copy:
         print("PMI finished.")
 
-
+    array_weight = np.array(weight)
+    split_num = len(weight)
+    m = np.min(array_weight)
+    s = np.max(array_weight) - np.min(array_weight)
+    for i in range(split_num):
+        w_get['pmi'].append(weight[i])
+        normal = (weight[i] - m)/s
+        # if args.norm_edge == 1:
+        #     weight[i] = normal if normal > 0 else 0
     #get each word appears in which document
     word_doc_list = {}
     for word in word_list:
@@ -115,6 +129,7 @@ def get_adj(tokenize_sentences,labels, train_size,test_size,word_id_map,word_lis
     doc_word_freq = {}
 
     for doc_id in range(train_size+test_size):
+    # for doc_id in range(train_size):
         words = tokenize_sentences[doc_id]
         for word in words:
             word_id = word_id_map[word]
@@ -123,13 +138,12 @@ def get_adj(tokenize_sentences,labels, train_size,test_size,word_id_map,word_lis
                 doc_word_freq[doc_word_str] += 1
             else:
                 doc_word_freq[doc_word_str] = 1
+
     doc_emb = []
-    info = torch.load(args.preModel_path)
 
     for i in range(train_size+test_size):
         words = tokenize_sentences[i]
         text = " ".join(words)
-        doc_emb.append(lstm_encode(text,info,args.tokenizier).cpu().numpy())
         doc_word_set = set()
         for word in words:
             if word in doc_word_set:
@@ -141,14 +155,23 @@ def get_adj(tokenize_sentences,labels, train_size,test_size,word_id_map,word_lis
             col.append(train_size +test_size+ j)
             idf = log(1.0 * train_size / (word_doc_freq[word_list[j]]+1))
             w = idf
+            if args.norm_edge == 1:
+                w = idf * freq 
             weight.append(w)
             doc_word_set.add(word)
-            
-            
-
-    doc_emb = np.concatenate(doc_emb)        
+    array_weight = np.array(weight[split_num:])
+    m = np.min(array_weight)
+    s = np.max(array_weight) - np.min(array_weight)
+    for i in range(split_num, len(weight)):
+        w_get['idf'].append(weight[i])
+        
+        normal = (weight[i] - m)/s
+        # if args.norm_edge == 1:
+        #     weight[i] = normal if normal > 0 else 0
     adj = sp.csr_matrix((weight, (row, col)), shape=(node_size, node_size))
 
     # build symmetric adjacency matrix
     adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)    
-    return adj, doc_emb, word_doc_freq     
+    end_time=  time.time()
+    print("graph construct time : ", end_time - start_time)
+    return adj, word_doc_freq     

@@ -45,7 +45,7 @@ def clean_str(string1):
 
 
 def preprocess_data(original_train_sentences, original_test_sentences, args):
-    nltk.download('stopwords')
+    # nltk.download('stopwords')
     stop_words = set(stopwords.words('english'))
     original_word_freq = {}  # to remove rare words
     for sentence in original_train_sentences:

@@ -19,6 +19,6 @@ Simply run `python main.py --train_size 1.0`
 | easy_copy  | 1 | For easy copy of the experiment results. 1 means True and 0 means False. |
 | lambda1  | 0.5 | The parameter that balance the 1 label and 0 label |
 | dict_path  | dict_rmsc.json | The word dict of the dataset calculated by LSTM |
-| preModel_path  | best_embeding_rmsc | LSTM model path |
+| emb_path  | ./embeddings/aapd | Path of the saved embedding of each document in the dataset |
 ## Acknowledgement
 Part of the code is inspired by https://github.com/tkipf/pygcn , https://github.com/yao8839836/text_gcn and https://github.com/usydnlp/InductTGCN, but has been modified.
